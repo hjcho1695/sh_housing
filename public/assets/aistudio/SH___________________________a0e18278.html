@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SH 청약 비서 (시안)</title>
+<style>
+  :root{
+    /* 네이버 스타일 멀티 컬러: 그린(메인) + 블루(알림·예정) + 오렌지(주의·복사) + 레드(경고) */
+    --main:#03c75a; --main-d:#029f48; --main-l:#e8f9ef;
+    --blue:#2f6bff; --blue-l:#e8efff;
+    --orange:#ff7a1a; --orange-l:#fff0e3;
+    --purple:#7b5cff; --purple-l:#efebff;
+    --teal:#00a99d; --teal-l:#dff7f4;
+    --pink:#ff5c8a; --pink-l:#ffe8ef;
+    --cream:#f3f6f9; --gold:#f5a623; --gold-l:#fff7e6;
+    --red:#e5362b; --red-l:#fdecea;
+    --gray1:#f2f4f7; --gray2:#e5e8eb; --gray3:#8b95a1; --text:#1e1e23; --sub:#555d66;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Nanum Gothic",sans-serif;
+       background:#fff;min-height:100vh;color:var(--text);
+       display:flex;flex-direction:column;align-items:center;padding:16px 8px 40px;-webkit-font-smoothing:antialiased;letter-spacing:-.3px}
+  button{font-family:inherit;cursor:pointer;border:none;transition:background .15s,opacity .15s}
+  button:active{opacity:.8}
+  input[type=checkbox]{accent-color:var(--main)}
+  .demo-bar{width:100%;max-width:402px;background:#2b2f33;color:#fff;border-radius:10px;padding:12px 14px;margin-bottom:20px;font-size:12px}
+  .demo-bar label{display:block;margin-bottom:6px;opacity:.85}
+  .demo-bar select{width:100%;padding:10px;border-radius:8px;border:none;font-size:13px}
+  .phone{width:100%;height:818px;background:var(--cream);border-radius:50px;
+         overflow:hidden;position:relative;display:flex;flex-direction:column}
+  /* 상단: 그린 그라데이션 헤더 + 화이트 로고 마크 */
+  .topbar{background:linear-gradient(135deg,#03c75a 0%,#00b86b 55%,#00a99d 100%);color:#fff;padding:58px 20px 20px;flex-shrink:0}
+  .topbar .row{display:flex;align-items:center;gap:4px}
+  .topbar h1{font-size:20px;font-weight:800;letter-spacing:-.5px;color:#fff}
+  #s-list .topbar h1{display:flex;align-items:center;gap:8px}
+  #s-list .topbar h1::before{content:"SH";display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;
+    background:#fff;color:var(--main-d);font-size:13px;font-weight:900;letter-spacing:-.5px}
+  .topbar .sub{font-size:13px;color:rgba(255,255,255,.9);margin-top:8px;line-height:1.45}
+  #s-detail .topbar{padding:56px 16px 14px}
+  #s-detail .topbar h1{font-size:17px}
+  .back{background:none;color:#fff;font-size:28px;line-height:1;padding:0 8px 0 0}
+  .screen{display:none;flex:1;overflow-y:auto;flex-direction:column}
+  .screen.active{display:flex}
+  .body{padding:12px 16px 44px;flex:1}
+  /* tabs: 탭마다 상태 색상 */
+  .tabs{display:flex;background:#fff;border-bottom:1px solid var(--gray2);position:sticky;top:0;z-index:2}
+  .tab{flex:1;padding:13px 0 12px;background:#fff;font-size:15px;color:var(--gray3);border-bottom:3px solid transparent;font-weight:700}
+  .tab .n{display:inline-block;min-width:20px;padding:0 6px;margin-left:5px;border-radius:10px;background:var(--gray1);font-size:12px;line-height:20px;color:var(--gray3);font-weight:700}
+  .tab.on{color:var(--text)}
+  .tab[data-tab=upcoming].on{border-bottom-color:var(--blue)} .tab[data-tab=upcoming].on .n{background:var(--blue);color:#fff}
+  .tab[data-tab=open].on{border-bottom-color:var(--main)} .tab[data-tab=open].on .n{background:var(--main);color:#fff}
+  .tab[data-tab=closed].on{border-bottom-color:#9aa3ad} .tab[data-tab=closed].on .n{background:#9aa3ad;color:#fff}
+  /* cards: 상태별 왼쪽 컬러 바 */
+  .card{position:relative;overflow:hidden;border:1px solid var(--gray2);border-radius:12px;padding:18px 18px 18px 22px;margin-bottom:10px;background:#fff}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--gray2)}
+  .card.upcoming::before{background:var(--blue)}
+  .card.open::before{background:var(--main)}
+  .card.closed::before{background:#c4c9d0}
+  .card .head{display:flex;gap:6px;align-items:center;margin-bottom:10px}
+  .badge{font-size:12px;font-weight:700;padding:3px 8px;border-radius:4px;background:var(--gray1);color:var(--sub)}
+  .badge.dday{background:var(--blue-l);color:var(--blue)}
+  .badge.open{background:var(--main);color:#fff}
+  .badge.closed{background:var(--gray1);color:var(--gray3)}
+  .badge.kind[data-k="주택임대"]{background:var(--purple-l);color:var(--purple)}
+  .badge.kind[data-k="주택분양"]{background:var(--orange-l);color:#d95f00}
+  .badge.kind[data-k="매입임대"]{background:var(--teal-l);color:var(--teal)}
+  .badge.kind[data-k="희망하우징"]{background:var(--pink-l);color:#e03a6c}
+  .card h3{font-size:17px;line-height:1.45;margin-bottom:10px;font-weight:700;letter-spacing:-.4px}
+  .card ul{list-style:none;font-size:14px;color:var(--sub);line-height:1.75;margin-bottom:16px}
+  .btns{display:flex;gap:8px}
+  .btn{flex:1;padding:13px 0;border-radius:8px;font-size:15px;font-weight:700}
+  .btn.ghost{background:#fff;color:var(--text);border:1px solid #d5d9de}
+  .btn.main{background:var(--main);color:#fff}
+  .btn.blue{background:var(--blue);color:#fff}
+  /* 알림 버튼은 블루, 신청 버튼은 그린으로 구분 */
+  .btn.main[data-go="alarm"]{background:var(--blue)}
+  .btn.ghost[data-go="alarm"]{background:var(--blue-l);color:var(--blue);border-color:#c7d6ff}
+  .btn.disabled{background:var(--gray1);color:var(--gray3);cursor:not-allowed;border:none}
+  .empty{text-align:center;color:var(--gray3);font-size:14px;padding:60px 0}
+  .note{font-size:12px;color:var(--gray3);line-height:1.55;margin-top:8px}
+  /* detail: 섹션마다 흰 카드 + 포인트 컬러 */
+  .alert{background:var(--gold-l);border:1px solid #fbe3b0;border-left:5px solid var(--orange);border-radius:10px;padding:14px 16px;font-size:14px;line-height:1.6;margin-bottom:10px;color:var(--sub)}
+  .alert b{color:#c2540a}
+  .title-box{background:#fff;border:1px solid var(--gray2);border-top:5px solid var(--main);border-radius:12px;padding:20px 18px}
+  .title-box h2{font-size:20px;line-height:1.4;margin:10px 0 12px;font-weight:800;letter-spacing:-.5px}
+  .kv{font-size:14px;line-height:1.8;color:var(--sub)}
+  .kv b{color:var(--main-d);margin-right:6px}
+  .sec{margin-top:10px;background:#fff;border:1px solid var(--gray2);border-radius:12px;padding:20px 18px}
+  .sec h4{display:flex;align-items:center;gap:8px;font-size:17px;margin-bottom:14px;font-weight:800;letter-spacing:-.4px}
+  .sec h4::before{content:"";width:4px;height:17px;border-radius:2px;background:var(--main)}
+  .sec:has(#timeline) h4::before{background:var(--blue)}
+  .sec:has(#mgmtNo) h4::before{background:var(--orange)}
+  .sec:has(#formBox) h4::before{background:var(--main)}
+  .tl{position:relative;padding-left:24px}
+  .tl::before{content:"";position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:var(--gray2)}
+  .step{position:relative;margin-bottom:18px;font-size:14px;line-height:1.6}
+  .step:last-child{margin-bottom:0}
+  .step::before{content:"";position:absolute;left:-22px;top:5px;width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #cfd4da}
+  .step.done::before{background:#cfd4da;border-color:#cfd4da}
+  .step.now::before{background:var(--main);border-color:var(--main);box-shadow:0 0 0 4px var(--main-l)}
+  .step .t{font-weight:700;font-size:15px}
+  .step .d{color:var(--sub)}
+  .tag-red{display:inline-block;background:var(--red-l);color:var(--red);font-weight:700;font-size:12px;padding:3px 8px;border-radius:4px;margin-top:4px}
+  .copybox{display:flex;align-items:center;justify-content:space-between;background:var(--orange-l);border-radius:8px;padding:12px 14px;margin-top:8px}
+  .copybox span{font-size:17px;font-weight:800;letter-spacing:.5px;color:#c2540a}
+  .copybtn{background:var(--orange);color:#fff;font-size:13px;font-weight:700;padding:9px 14px;border-radius:6px}
+  .res-item{font-size:14px;margin-bottom:20px;line-height:1.55;color:var(--sub)}
+  .res-item:last-child{margin-bottom:0}
+  .res-item b{font-size:15px;color:var(--text)}
+  .linkbtn{display:inline-block;margin-top:8px;padding:10px 14px;background:var(--blue-l);color:var(--blue);border:1px solid #c7d6ff;font-weight:700;font-size:13px;border-radius:6px}
+  /* form */
+  .formbox{background:#f1faf5;border:1px solid #d3f0df;border-radius:10px;padding:16px}
+  .formbox label.l{display:block;font-size:13px;color:var(--sub);margin:14px 0 6px;font-weight:700}
+  .formbox label.l:first-child{margin-top:0}
+  .inrow{display:flex;gap:6px}
+  .inrow input{flex:1;padding:13px;border:1px solid #d5d9de;background:#fff;border-radius:8px;font-size:15px;min-width:0;outline:none}
+  .inrow input:focus{border-color:var(--main)}
+  .inrow button{padding:0 14px;background:var(--blue);color:#fff;border-radius:8px;font-size:13px;font-weight:700;white-space:nowrap}
+  .msg{font-size:12px;margin-top:6px;min-height:14px}
+  .msg.ok{color:var(--main-d)} .msg.err{color:var(--red)}
+  .chk{display:flex;gap:10px;align-items:flex-start;background:#fff;border:1px solid var(--gray2);border-radius:8px;padding:12px 14px;margin-bottom:8px;font-size:14px;line-height:1.45;font-weight:600}
+  /* ───── iPhone 목업 프레임 ───── */
+  .device{position:relative;width:100%;max-width:402px;padding:12px;border-radius:62px;
+    background:linear-gradient(145deg,#4a4a50 0%,#17171a 35%,#2c2c31 100%);
+    box-shadow:0 0 0 1.5px #8d8d94,0 0 0 4px #1b1b1e,0 30px 60px rgba(20,60,40,.30),0 8px 20px rgba(0,0,0,.2)}
+  .device .side{position:absolute;width:4px;background:linear-gradient(90deg,#2a2a2f,#5a5a61)}
+  .device .side.left{left:-6px;border-radius:3px 0 0 3px}
+  .device .side.right{right:-6px;border-radius:0 3px 3px 0}
+  /* 다이나믹 아일랜드 + 홈 인디케이터 */
+  .phone::before{content:"";position:absolute;top:11px;left:50%;transform:translateX(-50%);width:118px;height:34px;background:#000;border-radius:20px;z-index:30;pointer-events:none}
+  .phone::after{content:"";position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;background:#111;border-radius:3px;z-index:30;pointer-events:none}
+  /* 상태 표시줄 */
+  .statusbar{position:absolute;top:0;left:0;right:0;height:50px;display:flex;justify-content:space-between;align-items:center;
+    padding:8px 30px 0 36px;color:#fff;font-size:15px;font-weight:700;z-index:25;pointer-events:none;
+    background:linear-gradient(90deg,#03c75a 0%,#00b86b 55%,#00a99d 100%)}
+  .statusbar .ico{display:flex;align-items:center;gap:6px}
+  .tabs{top:50px}
+  .phone .cta{padding-bottom:30px}
+  /* 좁은 화면(실제 휴대폰)에서는 프레임 제거 */
+  @media (max-width:430px){
+    body{padding:8px 0 24px}
+    .device{padding:0;border-radius:0;background:none;box-shadow:none}
+    .device .side,.statusbar,.phone::before,.phone::after{display:none}
+    .phone{border-radius:0;height:calc(100vh - 110px);min-height:600px}
+    .topbar{padding-top:22px}
+    #s-detail .topbar{padding-top:16px}
+    .tabs{top:0}
+    .phone .cta{padding-bottom:14px}
+  }
+  .chk:has(input:checked){border-color:var(--main);background:var(--main-l)}
+  .chk input{margin-top:3px;width:18px;height:18px}
+  .chk small{display:block;color:var(--gray3);font-size:12px;font-weight:400;margin-top:2px}
+  .agree{font-size:12px;color:var(--sub);line-height:1.6;margin:14px 0}
+  .ics{display:block;width:100%;margin-top:8px;padding:13px;background:var(--blue-l);border:1px solid #c7d6ff;border-radius:8px;font-size:14px;font-weight:700;color:var(--blue)}
+  .disclaimer{font-size:12px;color:var(--gray3);line-height:1.6;margin-top:16px;padding:0 4px}
+  /* 하단 고정 버튼 */
+  .cta{flex-shrink:0;padding:10px 16px 20px;background:#fff;border-top:1px solid var(--gray2);display:flex;gap:8px}
+  .cta .btn{padding:15px 0;font-size:16px;border-radius:8px}
+  .done-box{background:var(--main-l);color:var(--main-d);border-radius:10px;padding:16px;font-size:14px;font-weight:700;line-height:1.6;display:none;margin-top:12px}
+  .toast{position:absolute;left:50%;bottom:100px;transform:translateX(-50%);background:rgba(30,30,35,.92);color:#fff;font-size:13px;
+         padding:11px 18px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .25s;white-space:nowrap;z-index:9}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="demo-bar">
+  <label>🧪 시연용 기준 시점 (실제 서비스에서는 현재 시각 자동 적용)</label>
+  <select id="demoDate">
+    <option value="2026-05-29T09:00">2026.05.29 — 공고 게시 후 (접수 예정)</option>
+    <option value="2026-06-14T09:00">2026.06.14 — 접수 시작 전날</option>
+    <option value="2026-06-16T12:00">2026.06.16 — 인터넷 접수 기간 중</option>
+    <option value="2026-06-26T17:00">2026.06.26 — 서류심사 대상자 발표일 (접수 마감 후)</option>
+  </select>
+</div>
+
+<div class="phone">
+
+  <!-- ========== 화면 1: 공고 목록 ========== -->
+  <section id="s-list" class="screen active">
+    <div class="topbar">
+      <h1>SH 청약 비서</h1>
+      <div class="sub">청약 일정, 놓치지 않게 챙겨드릴게요</div>
+    </div>
+    <div class="tabs">
+      <button class="tab on" data-tab="upcoming">접수 예정<span class="n" id="n-upcoming">0</span></button>
+      <button class="tab" data-tab="open">접수 중<span class="n" id="n-open">0</span></button>
+      <button class="tab" data-tab="closed">마감<span class="n" id="n-closed">0</span></button>
+    </div>
+    <div class="body" id="listBody"></div>
+  </section>
+
+  <!-- ========== 화면 2: 공고 상세 ========== -->
+  <section id="s-detail" class="screen">
+    <div class="topbar">
+      <div class="row">
+        <button class="back" id="btnBack" aria-label="뒤로">‹</button>
+        <h1>공고 상세 요약</h1>
+      </div>
+    </div>
+    <div class="body">
+      <div class="alert">
+        ⚠️ <b>[필독] 기존 행복주택 예비자이신가요?</b><br>
+        이번 공고 신청 시 동일유형 예비자 명부에서 제외될 수 있고, 공공임대주택(국민임대·영구임대·행복주택·통합공공임대) 입주 시 모든 예비자 명부에서 제외됩니다.
+      </div>
+
+      <div class="title-box">
+        <span class="badge dday" id="d-badge">D-18</span>
+        <h2>2026년 1차 행복주택 입주자 모집공고</h2>
+        <div class="kv">
+          <b>공급호수</b> 신규공급 55호 · 재공급 1,829호(예비입주자 포함)<br>
+          <b>신청자격</b> 대학생, 청년, 신혼부부, 고령자, 주거급여수급자
+        </div>
+      </div>
+
+      <div class="sec">
+        <h4>📅 핵심 일정</h4>
+        <div class="tl" id="timeline"></div>
+      </div>
+
+      <div class="sec">
+        <h4>📌 신청 전 확인하세요</h4>
+        <div class="res-item">
+          <b>청약홈 순위확인서 발급용 주택관리번호</b><br>
+          공고일 이후 영업일(2026.05.29.)부터 확인·발급 가능
+          <div class="copybox"><span id="mgmtNo">2026-000254</span><button class="copybtn" id="btnCopy">번호 복사</button></div>
+        </div>
+        <div class="res-item">
+          <b>공급단지 전자팸플릿</b><br>
+          홈페이지 &gt; 청약정보 &gt; 전자팸플릿에서 '단지명' 검색
+          <div class="note">※ 최초 공급 시 제작된 자료로 공급유형·세대수가 다를 수 있어 참고용으로만 활용하세요.</div>
+          <button class="linkbtn" data-demo="전자팸플릿 페이지로 연결됩니다.">전자팸플릿 바로가기</button>
+        </div>
+        <div class="res-item">
+          <b>공고문 원본</b><br>
+          단지·공급호수·소득·자산 기준 등 상세 내용은 공고문(첨부1)을 확인하세요.
+          <br><button class="linkbtn" data-demo="공고문 PDF가 다운로드됩니다.">📄 공고문 다운로드</button>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h4>🔔 이 공고 알림 받기</h4>
+        <div class="formbox" id="formBox">
+          <label class="l">휴대폰 번호</label>
+          <div class="inrow">
+            <input id="phone" type="tel" inputmode="numeric" placeholder="010-0000-0000" maxlength="13">
+            <button id="btnSend">인증번호 받기</button>
+          </div>
+          <label class="l">인증번호 (시안: 1234 입력)</label>
+          <div class="inrow">
+            <input id="code" type="tel" inputmode="numeric" placeholder="4자리" maxlength="4">
+            <button id="btnVerify">확인</button>
+          </div>
+          <div class="msg" id="phoneMsg"></div>
+
+          <label class="l">알림 받을 시점 (중복 선택 가능)</label>
+          <label class="chk"><input type="checkbox" class="alarm" value="0" checked>
+            <span>청약 접수 하루 전<small>06.14(일) 오전 10시</small></span></label>
+          <label class="chk"><input type="checkbox" class="alarm" value="1" checked>
+            <span>접수 마감 당일 아침<small>06.17(수) 오전 10시 · 마감 17:00</small></span></label>
+          <label class="chk"><input type="checkbox" class="alarm" value="2">
+            <span>서류심사 대상자 발표일<small>06.26(금) 오후 4시 이후</small></span></label>
+          <label class="chk"><input type="checkbox" class="alarm" value="3">
+            <span>서류 제출 마감 하루 전<small>07.02(목) 오전 10시 · 등기우편만 접수</small></span></label>
+
+          <div class="agree">
+            <label><input type="checkbox" id="agree"> [필수] 휴대폰 번호 수집·이용에 동의합니다.</label><br>
+            · 수집 항목: 휴대폰 번호 1개 · 이용 목적: 해당 공고 일정 알림 발송<br>
+            · 보유 기간: 해당 공고 종료 후 즉시 파기
+          </div>
+          <button class="ics" id="btnIcs">📅 번호 입력 없이 내 캘린더에 일정 담기 (.ics)</button>
+        </div>
+        <div class="done-box" id="doneBox"></div>
+      </div>
+
+      <div class="disclaimer">
+        본 화면은 공고문 이해를 돕기 위한 요약 정보이며, 일정·자격 등 정확한 내용은 반드시 입주자 모집공고문을 확인해 주세요. 공고문 미숙지로 인한 불이익의 책임은 신청자 본인에게 있습니다.<br>
+        신청 문의: 서울주택도시개발공사 콜센터 1600-3456
+      </div>
+    </div>
+    <div class="cta" id="ctaBar"></div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* ───────── 데이터 (시안용) ───────── */
+const SH_APPLY_URL = "https://www.i-sh.co.kr/app/index.do";
+const T = {
+  open:  new Date("2026-06-15T10:00"),
+  close: new Date("2026-06-17T17:00"),
+  docAnn:new Date("2026-06-26T16:00"),
+  docS:  new Date("2026-07-01T00:00"),
+  docE:  new Date("2026-07-03T23:59"),
+  win:   new Date("2026-10-30T00:00")
+};
+const ALARMS = [
+  {label:"[청약 접수 D-1] 내일 10:00부터 2026년 1차 행복주택 청약이 시작됩니다.", at:"20260614T100000"},
+  {label:"[마감 당일] 오늘 17:00 청약 마감! 아직 신청 전이신가요?",               at:"20260617T100000"},
+  {label:"[서류심사 대상자 발표] 오늘 16시 이후 발표 결과를 확인하세요.",          at:"20260626T161000"},
+  {label:"[서류 마감 D-1] 내일까지 등기우편으로 발송하세요. (일반우편 불가)",       at:"20260702T100000"}
+];
+const OTHERS = [
+  {status:"open",   kind:"주택분양", title:"고덕강일지구 3단지 토지임대부 분양주택 입주자모집공고", lines:["청약시작일: 2026-10-26"], url:SH_APPLY_URL},
+  {status:"closed", kind:"매입임대", title:"2026년 하반기 신혼·신생아 매입임대주택Ⅰ 입주자 모집공고(26.09.30.)", lines:["청약시작일: 2026-10-13"]},
+  {status:"closed", kind:"희망하우징", title:"2026-2차 희망하우징(공공기숙사) 입주자 모집공고(2026. 9. 17.)", lines:["청약시작일: 2026-10-01"]}
+];
+
+/* ───────── 상태 ───────── */
+let now = new Date(document.getElementById("demoDate").value);
+let curTab = "upcoming";
+let verified = false;
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const fmt = d => `${d.getMonth()+1}.${String(d.getDate()).padStart(2,"0")}`;
+const dayDiff = (a,b) => Math.round((new Date(b.toDateString()) - new Date(a.toDateString()))/86400000);
+
+function happyStatus(){
+  if(now < T.open) return "upcoming";
+  if(now <= T.close) return "open";
+  return "closed";
+}
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove("show"),1800);
+}
+
+/* ───────── 화면 1: 목록 ───────── */
+function renderList(){
+  const st = happyStatus();
+  const items = [{status:st, kind:"주택임대", happy:true,
+    title:"2026년 1차 행복주택 입주자 모집공고(2026. 5. 28.)"}, ...OTHERS];
+  const cnt = {upcoming:0,open:0,closed:0};
+  items.forEach(i=>cnt[i.status]++);
+  ["upcoming","open","closed"].forEach(k=>$("#n-"+k).textContent = cnt[k]);
+
+  const list = items.filter(i=>i.status===curTab);
+  const box = $("#listBody");
+  if(!list.length){ box.innerHTML = '<div class="empty">해당하는 공고가 없습니다.</div>'; return; }
+
+  box.innerHTML = list.map((i,idx)=>{
+    let badge, lines, btns;
+    if(i.happy){
+      const d = dayDiff(now, T.open);
+      badge = i.status==="upcoming" ? `<span class="badge dday">D-${d}</span>`
+            : i.status==="open" ? `<span class="badge open">접수 중</span>` : `<span class="badge closed">접수 마감</span>`;
+      lines = ["인터넷 접수: 06.15(월) 10:00 ~ 06.17(수) 17:00",
+               "방문 접수: 06.16(화) ~ 06.17(수) 10:00~17:00",
+               "공급: 신규 55호 · 재공급 1,829호"];
+      btns = `<button class="btn ghost" data-go="detail">요약 보기</button>` +
+        (i.status==="open"
+          ? `<button class="btn main" data-apply="1">청약 신청하기</button>`
+          : i.status==="upcoming" ? `<button class="btn main" data-go="alarm">🔔 알림 신청</button>`
+          : `<button class="btn ghost" data-go="alarm">🔔 서류 알림</button>`);
+    }else{
+      badge = i.status==="open" ? `<span class="badge open">접수 중</span>` : `<span class="badge closed">청약 완료</span>`;
+      lines = i.lines;
+      btns = `<button class="btn ghost" data-demo="공고 요약 카드로 이동합니다. (시안에서는 행복주택 공고만 상세 구현)">요약 보기</button>` +
+        (i.status==="open" ? `<button class="btn main" data-apply="${i.url}">청약 신청하기</button>`
+                           : `<button class="btn disabled" disabled>신청 마감</button>`);
+    }
+    return `<div class="card ${i.status}">
+      <div class="head">${badge}<span class="badge kind" data-k="${i.kind}">${i.kind}</span></div>
+      <h3>${i.title}</h3>
+      <ul>${lines.map(l=>`<li>· ${l}</li>`).join("")}</ul>
+      <div class="btns">${btns}</div>
+    </div>`;
+  }).join("") + `<div class="note">※ 시안용 데이터입니다. 실제 서비스는 SH 청약 공고 데이터와 연동됩니다.</div>`;
+}
+
+/* ───────── 화면 2: 상세 ───────── */
+function renderDetail(){
+  const st = happyStatus();
+  const b = $("#d-badge");
+  if(st==="upcoming"){ b.className="badge dday"; b.textContent = "D-"+dayDiff(now,T.open); }
+  else if(st==="open"){ b.className="badge open"; b.textContent = "접수 중"; }
+  else { b.className="badge closed"; b.textContent = "접수 마감"; }
+
+  const steps = [
+    {t:"① 모집공고",       d:"2026.05.28(목)", end:new Date("2026-05-28T23:59")},
+    {t:"② 청약 접수",      d:"인터넷 06.15(월) 10:00 ~ 06.17(수) 17:00<br>방문 06.16(화) ~ 06.17(수) 10:00~17:00", end:T.close, start:T.open},
+    {t:"③ 서류심사 대상자 발표", d:"06.26(금) 16시 이후", end:T.docAnn},
+    {t:"④ 서류 제출",      d:"07.01(수) ~ 07.03(금)<br><span class='tag-red'>등기우편 접수 · 일반우편 불가</span>", end:T.docE, start:T.docS},
+    {t:"⑤ 당첨자 발표",    d:"10.30(금) 예정<br><span class='note'>금융자산 조회가 지연되면 변경될 수 있습니다.</span>", end:T.win}
+  ];
+  let nowIdx = steps.findIndex(s => now <= s.end);
+  if(nowIdx<0) nowIdx = steps.length-1;
+  // 아직 시작 전 단계 사이(예: 공고 후 ~ 접수 전)는 다음 단계를 '현재'로 표시
+  $("#timeline").innerHTML = steps.map((s,i)=>{
+    const cls = i<nowIdx ? "done" : i===nowIdx ? "now" : "";
+    return `<div class="step ${cls}"><div class="t">${s.t}${i===nowIdx?' <span style="color:var(--main)">← 지금</span>':''}</div><div class="d">${s.d}</div></div>`;
+  }).join("");
+
+  renderCta();
+}
+function renderCta(){
+  const st = happyStatus();
+  const bar = $("#ctaBar");
+  if(st==="open"){
+    bar.innerHTML = `<button class="btn ghost" data-go="alarm">🔔 알림 신청</button>
+                     <button class="btn main" style="flex:2" data-apply="1">인터넷 청약 신청하기</button>`;
+  }else if(st==="upcoming"){
+    bar.innerHTML = `<button class="btn disabled" style="flex:1" disabled>접수 시작 전</button>
+                     <button class="btn main" style="flex:2" data-go="alarm">🔔 청약 시작 알림 예약하기</button>`;
+  }else{
+    bar.innerHTML = `<button class="btn disabled" style="flex:1" disabled>접수 마감</button>
+                     <button class="btn main" style="flex:2" data-go="alarm">🔔 서류 제출 알림 받기</button>`;
+  }
+}
+
+/* ───────── 이동 ───────── */
+function show(id){ $$(".screen").forEach(s=>s.classList.toggle("active", s.id===id)); }
+function goDetail(scrollToAlarm){
+  show("s-detail"); renderDetail();
+  const sc = $("#s-detail");
+  if(scrollToAlarm){ setTimeout(()=>$("#formBox").scrollIntoView({behavior:"smooth",block:"center"}),50); }
+  else sc.scrollTop = 0;
+}
+
+/* ───────── 이벤트 ───────── */
+document.addEventListener("click", e=>{
+  const t = e.target.closest("button, label");
+  if(!t) return;
+  if(t.dataset.go==="detail") return goDetail(false);
+  if(t.dataset.go==="alarm")  return goDetail(true);
+  if(t.dataset.apply){
+    const url = t.dataset.apply.startsWith("http") ? t.dataset.apply : SH_APPLY_URL;
+    return window.open(url,"_blank","noopener");
+  }
+  if(t.dataset.demo) return toast(t.dataset.demo);
+  if(t.classList.contains("tab")){
+    curTab = t.dataset.tab;
+    $$(".tab").forEach(x=>x.classList.toggle("on", x===t));
+    renderList();
+  }
+});
+$("#btnBack").onclick = ()=>show("s-list");
+
+$("#demoDate").onchange = e=>{
+  now = new Date(e.target.value);
+  curTab = happyStatus();
+  $$(".tab").forEach(x=>x.classList.toggle("on", x.dataset.tab===curTab));
+  renderList();
+  if($("#s-detail").classList.contains("active")) renderDetail();
+};
+
+/* 번호 복사 */
+$("#btnCopy").onclick = async ()=>{
+  const v = $("#mgmtNo").textContent;
+  try{ await navigator.clipboard.writeText(v); }
+  catch(_){ const r=document.createRange(); r.selectNodeContents($("#mgmtNo")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); document.execCommand("copy"); }
+  toast("주택관리번호가 복사되었습니다");
+};
+
+/* 휴대폰 번호 자동 하이픈 */
+$("#phone").addEventListener("input", e=>{
+  let v = e.target.value.replace(/\D/g,"").slice(0,11);
+  if(v.length>7) v = v.replace(/(\d{3})(\d{4})(\d+)/,"$1-$2-$3");
+  else if(v.length>3) v = v.replace(/(\d{3})(\d+)/,"$1-$2");
+  e.target.value = v;
+});
+const msg = (t,ok)=>{ const m=$("#phoneMsg"); m.textContent=t; m.className="msg "+(ok?"ok":"err"); };
+$("#btnSend").onclick = ()=>{
+  if(!/^010-\d{4}-\d{4}$/.test($("#phone").value)) return msg("휴대폰 번호를 정확히 입력해 주세요.",false);
+  msg("인증번호를 발송했습니다. (시안: 1234)",true);
+};
+$("#btnVerify").onclick = ()=>{
+  if($("#code").value==="1234"){ verified = true; msg("✔ 번호 확인이 완료되었습니다.",true); }
+  else { verified = false; msg("인증번호가 일치하지 않습니다.",false); }
+};
+
+/* 알림 신청 (CTA 하단 또는 폼 내 버튼 역할: 마지막 체크 후 자동 안내) */
+function submitAlarm(){
+  const picked = $$(".alarm:checked").map(c=>+c.value);
+  if(!verified) return toast("휴대폰 번호 확인을 먼저 해주세요");
+  if(!picked.length) return toast("알림 시점을 1개 이상 선택해 주세요");
+  if(!$("#agree").checked) return toast("개인정보 수집·이용에 동의해 주세요");
+  const box = $("#doneBox");
+  box.style.display="block";
+  box.innerHTML = "✔ 알림 신청이 완료되었습니다.<br>" + picked.map(i=>"· "+ALARMS[i].label).join("<br>")
+    + "<br><span style='font-weight:400'>공고 종료 후 입력하신 번호는 즉시 파기됩니다.</span>";
+  box.scrollIntoView({behavior:"smooth",block:"center"});
+}
+// 폼 하단에 신청 버튼 추가
+(function(){
+  const b = document.createElement("button");
+  b.className="btn blue"; b.style.cssText="width:100%;margin-top:12px;padding:16px 0;font-size:15px";
+  b.textContent="🔔 공고 알림 예약하기"; b.onclick = submitAlarm;
+  $("#btnIcs").before(b);
+})();
+
+/* 캘린더(.ics) 내려받기 */
+$("#btnIcs").onclick = ()=>{
+  const ev = [
+    ["청약 접수 시작(인터넷)","20260615T100000","20260615T103000"],
+    ["청약 접수 마감(인터넷 17:00)","20260617T170000","20260617T173000"],
+    ["서류심사 대상자 발표","20260626T160000","20260626T163000"],
+    ["서류 제출 시작(등기우편)","20260701T090000","20260701T093000"],
+    ["서류 제출 마감(등기우편)","20260703T090000","20260703T093000"]
+  ].map((e,i)=>`BEGIN:VEVENT\r\nUID:sh-happy-2026-1-${i}@sh-demo\r\nDTSTAMP:20260527T000000Z\r\nDTSTART:${e[1]}\r\nDTEND:${e[2]}\r\nSUMMARY:[SH 행복주택] ${e[0]}\r\nEND:VEVENT`).join("\r\n");
+  const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//SH Demo//KO\r\n${ev}\r\nEND:VCALENDAR`;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([ics],{type:"text/calendar"}));
+  a.download = "SH_행복주택_일정.ics"; a.click();
+  toast("일정 파일을 내려받았습니다");
+};
+
+/* iPhone 목업: 기존 화면을 .device 프레임으로 감싸고 버튼·상태바 추가 */
+(function(){
+  const phone = $(".phone");
+  const dev = document.createElement("div");
+  dev.className = "device";
+  phone.parentNode.insertBefore(dev, phone);
+  dev.appendChild(phone);
+  [["left","118px","30px"],["left","170px","58px"],["left","240px","58px"],["right","200px","96px"]].forEach(([side,top,h])=>{
+    const b = document.createElement("i");
+    b.className = "side " + side; b.style.top = top; b.style.height = h;
+    dev.appendChild(b);
+  });
+  const sb = document.createElement("div");
+  sb.className = "statusbar";
+  sb.innerHTML = '<span>9:41</span><span class="ico">'
+    + '<svg width="18" height="12" viewBox="0 0 18 12" fill="#fff"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>'
+    + '<svg width="17" height="12" viewBox="0 0 17 12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M1.5 4.2a10 10 0 0 1 14 0"/><path d="M4.2 7a6 6 0 0 1 8.6 0"/><circle cx="8.5" cy="10" r="1" fill="#fff" stroke="none"/></svg>'
+    + '<svg width="27" height="13" viewBox="0 0 27 13"><rect x="0.5" y="0.5" width="22" height="12" rx="3.5" fill="none" stroke="#fff" opacity=".5"/><rect x="2" y="2" width="19" height="9" rx="2.2" fill="#fff"/><rect x="24" y="4" width="2" height="5" rx="1" fill="#fff" opacity=".5"/></svg>'
+    + '</span>';
+  phone.prepend(sb);
+})();
+
+renderList();
+</script>
+</body>
+</html>

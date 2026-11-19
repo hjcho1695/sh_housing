@@ -1,0 +1,6 @@
+{
+  "name": "청약 비서 관리자",
+  "description": "SH 청약 공고문(PDF·텍스트)에서 일정과 핵심 요약을 AI로 추출하고 원문 근거 대조·검수 후 사용자 화면용 JSON으로 내보내는 관리자 페이지",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
